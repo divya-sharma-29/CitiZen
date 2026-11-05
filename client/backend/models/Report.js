@@ -62,6 +62,11 @@ const reportSchema = new mongoose.Schema(
       default: null,
     },
 
+    imageUrls: {
+      type: [String],
+      default: [],
+    },
+
     // ================= STATUS =================
 
     status: {
@@ -124,6 +129,46 @@ const reportSchema = new mongoose.Schema(
       default: null,
     },
 
+    assignedAt: {
+      type: Date,
+      default: null,
+    },
+
+    assignedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
+
+    assignmentHistory: [
+      {
+        assignedTo: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "User",
+          default: null,
+        },
+        assignedBy: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "User",
+          required: true,
+        },
+        assignedAt: {
+          type: Date,
+          default: Date.now,
+        },
+        previousAuthority: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "User",
+          default: null,
+        },
+        action: {
+          type: String,
+          enum: ["ASSIGNED", "REASSIGNED", "UNASSIGNED"],
+          default: "ASSIGNED",
+        },
+      },
+    ],
+
     appreciatedBy: [
       {
         type: mongoose.Schema.Types.ObjectId,
@@ -139,6 +184,12 @@ const reportSchema = new mongoose.Schema(
     resolvedAt: {
       type: Date,
       default: null,
+    },
+
+    resolutionCycle: {
+      type: Number,
+      default: 0,
+      min: 0,
     },
 
     duplicateCount: {
@@ -167,6 +218,14 @@ const reportSchema = new mongoose.Schema(
 reportSchema.index({
   latitude: 1,
   longitude: 1,
+});
+reportSchema.index({
+  userId: 1,
+  createdAt: -1,
+});
+reportSchema.index({
+  userId: 1,
+  status: 1,
 });
 
 module.exports = mongoose.model("Report", reportSchema);

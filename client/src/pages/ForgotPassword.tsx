@@ -1,4 +1,6 @@
 import { useState } from "react";
+import type { FormEvent } from "react";
+import { apiUrl } from "../lib/api";
 import { Link } from "react-router-dom";
 import {
   Mail,
@@ -14,16 +16,17 @@ function ForgotPassword() {
 
   const [loading, setLoading] = useState(false);
 
-  async function handleForgotPassword() {
+  async function handleForgotPassword(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
     setError("");
     setSuccess("");
 
-    if (!email) {
+    if (!email.trim()) {
       setError("Please enter your email address.");
       return;
     }
 
-    if (!email.includes("@")) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
       setError("Please enter a valid email address.");
       return;
     }
@@ -32,14 +35,14 @@ function ForgotPassword() {
 
     try {
       const response = await fetch(
-        "http://localhost:5000/api/auth/forgot-password",
+        apiUrl("/api/auth/forgot-password"),
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            email,
+            email: email.trim(),
           }),
         }
       );
@@ -71,7 +74,7 @@ function ForgotPassword() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-blue-950 text-white flex items-center justify-center px-6">
+    <div className="min-h-screen bg-linear-to-br from-slate-950 via-slate-900 to-blue-950 text-white flex items-center justify-center px-6">
 
       <div className="w-full max-w-md">
 
@@ -121,49 +124,42 @@ function ForgotPassword() {
             </div>
           )}
 
-          {/* Email */}
-          <div className="mt-8">
+          <form onSubmit={handleForgotPassword}>
+            <div className="mt-8">
+              <label htmlFor="forgot-password-email" className="text-sm text-gray-300">
+                Email
+              </label>
 
-            <label className="text-sm text-gray-300">
-              Email
-            </label>
+              <div className="relative mt-2">
+                <Mail
+                  size={18}
+                  aria-hidden="true"
+                  className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
+                />
 
-            <div className="relative mt-2">
-
-              <Mail
-                size={18}
-                className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
-              />
-
-              <input
-                type="email"
-                placeholder="Enter your email"
-                value={email}
-                onChange={(e) =>
-                  setEmail(e.target.value)
-                }
-                className="w-full bg-slate-900/70 border border-white/10 rounded-xl py-3 pl-11 pr-4 outline-none focus:border-blue-500"
-              />
-
+                <input
+                  id="forgot-password-email"
+                  type="email"
+                  autoComplete="email"
+                  placeholder="Enter your email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full bg-slate-900/70 border border-white/10 rounded-xl py-3 pl-11 pr-4 outline-none focus:border-blue-500"
+                  required
+                  disabled={loading}
+                />
+              </div>
             </div>
 
-          </div>
-
-          {/* Button */}
-          <button
-            type="button"
-            onClick={handleForgotPassword}
-            disabled={loading}
-            className="w-full mt-8 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 py-3 rounded-xl font-semibold transition flex items-center justify-center gap-2"
-          >
-            {loading
-              ? "Sending..."
-              : "Send Reset Link"}
-
-            {!loading && (
-              <ArrowRight size={18} />
-            )}
-          </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full mt-8 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 py-3 rounded-xl font-semibold transition flex items-center justify-center gap-2"
+            >
+              {loading ? "Sending..." : "Send Reset Link"}
+              {!loading && <ArrowRight size={18} />}
+            </button>
+          </form>
 
           {/* Back to login */}
           <div className="flex justify-center mt-6">

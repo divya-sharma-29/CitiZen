@@ -1,15 +1,11 @@
 import { useEffect, useState } from "react";
+import { apiUrl } from "../../lib/api";
 
 interface Stats {
   assigned: number;
   inProgress: number;
   resolved: number;
   critical: number;
-}
-
-interface Authority {
-  _id: string;
-  name: string;
 }
 
 interface Report {
@@ -20,8 +16,13 @@ interface Report {
   priorityScore: number;
   status: string;
   location: string;
-  authorityId?: string;
   resolutionNote?: string;
+  description?: string;
+  imageUrl?: string | null;
+  imageUrls?: string[];
+  createdAt?: string;
+  assignedAt?: string | null;
+  userId?: { name: string; email?: string } | string;
 }
 
 export default function AuthorityDashboard() {
@@ -31,148 +32,94 @@ export default function AuthorityDashboard() {
   const [reports, setReports] =
     useState<Report[]>([]);
 
-  const [authorities, setAuthorities] =
-    useState<Authority[]>([]);
-
   const [resolutionNotes, setResolutionNotes] =
     useState<Record<string, string>>({});
+
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [priorityFilter, setPriorityFilter] = useState("all");
+  const [page, setPage] = useState(1);
+  const [pages, setPages] = useState(1);
+  const [totalReports, setTotalReports] = useState(0);
+  const [reportsLoading, setReportsLoading] = useState(true);
+  const [reportsError, setReportsError] = useState("");
+  const [reloadKey, setReloadKey] = useState(0);
 
   const token =
     localStorage.getItem("token");
 
   useEffect(() => {
-    loadDashboard();
-    loadReports();
-    loadAuthorities();
-  }, []);
+    const controller = new AbortController();
 
-  // =========================
-  // LOAD DASHBOARD STATS
-  // =========================
-
-  const loadDashboard = async () => {
-    try {
-      const response = await fetch(
-        "http://localhost:5000/api/authority/dashboard",
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      if (response.ok) {
-        setStats(await response.json());
-      }
-    } catch (error) {
-      console.error(
-        "Failed to load dashboard:",
-        error
-      );
-    }
-  };
-
-  // =========================
-  // LOAD REPORTS
-  // =========================
-
-  const loadReports = async () => {
-    try {
-      const response = await fetch(
-        "http://localhost:5000/api/authority/reports",
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      if (response.ok) {
-        const data = await response.json();
-
-        setReports(data.reports || []);
-      }
-    } catch (error) {
-      console.error(
-        "Failed to load reports:",
-        error
-      );
-    }
-  };
-
-  // =========================
-  // LOAD AUTHORITIES
-  // =========================
-
-  const loadAuthorities = async () => {
-    try {
-      const response = await fetch(
-        "http://localhost:5000/api/users/authorities",
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      if (response.ok) {
-        const data = await response.json();
-
-        setAuthorities(
-          data.authorities || data || []
-        );
-      }
-    } catch (error) {
-      console.error(
-        "Failed to load authorities:",
-        error
-      );
-    }
-  };
-
-  // =========================
-  // ASSIGN REPORT
-  // =========================
-
-  const assignReport = async (
-    reportId: string,
-    authorityId: string
-  ) => {
-    if (!authorityId) return;
-
-    try {
-      const response = await fetch(
-        `http://localhost:5000/api/reports/${reportId}/assign`,
-        {
-          method: "PATCH",
-
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-
-          body: JSON.stringify({
-            authorityId,
-          }),
-        }
-      );
-
-      if (!response.ok) {
-        console.error(
-          "Failed to assign report"
-        );
+    async function loadQueue() {
+      if (!token) {
+        setReportsError("Sign in as an approved authority to load assigned reports.");
+        setReportsLoading(false);
         return;
       }
 
-      await loadReports();
-      await loadDashboard();
-    } catch (error) {
-      console.error(
-        "Failed to assign report:",
-        error
-      );
+      setReportsLoading(true);
+      setReportsError("");
+
+      const query = new URLSearchParams({
+        page: String(page),
+        limit: "10",
+      });
+      if (search.trim()) query.set("search", search.trim());
+      if (statusFilter !== "all") query.set("status", statusFilter);
+      if (categoryFilter !== "all") query.set("category", categoryFilter);
+      if (priorityFilter !== "all") query.set("priority", priorityFilter);
+
+      try {
+        const response = await fetch(
+          apiUrl(`/api/authority/reports?${query}`),
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+            signal: controller.signal,
+          }
+        );
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.message || "Unable to load assigned reports.");
+        }
+
+        setReports(data.reports || []);
+        setStats(data.counts);
+        setTotalReports(data.pagination?.total || 0);
+        setPages(Math.max(1, data.pagination?.pages || 1));
+      } catch (loadError) {
+        if (
+          loadError instanceof DOMException &&
+          loadError.name === "AbortError"
+        ) {
+          return;
+        }
+        console.error("Authority report queue failed:", loadError);
+        setReportsError(
+          loadError instanceof Error
+            ? loadError.message
+            : "Unable to load assigned reports."
+        );
+      } finally {
+        if (!controller.signal.aborted) setReportsLoading(false);
+      }
     }
-  };
+
+    void loadQueue();
+    return () => controller.abort();
+  }, [
+    categoryFilter,
+    page,
+    priorityFilter,
+    reloadKey,
+    search,
+    statusFilter,
+    token,
+  ]);
 
   // =========================
   // UPDATE REPORT STATUS
@@ -199,19 +146,19 @@ export default function AuthorityDashboard() {
         }
       );
 
+      const data = await response.json();
       if (!response.ok) {
-        console.error(
-          "Failed to update report status"
-        );
-        return;
+        throw new Error(data.message || "Failed to update report status.");
       }
 
-      await loadReports();
-      await loadDashboard();
+      setReloadKey((key) => key + 1);
     } catch (error) {
       console.error(
         "Failed to update status:",
         error
+      );
+      setReportsError(
+        error instanceof Error ? error.message : "Failed to update status."
       );
     }
   };
@@ -247,11 +194,9 @@ export default function AuthorityDashboard() {
         }
       );
 
+      const data = await response.json();
       if (!response.ok) {
-        console.error(
-          "Failed to resolve report"
-        );
-        return;
+        throw new Error(data.message || "Failed to resolve report.");
       }
 
       setResolutionNotes((previous) => {
@@ -264,12 +209,14 @@ export default function AuthorityDashboard() {
         return updated;
       });
 
-      await loadReports();
-      await loadDashboard();
+      setReloadKey((key) => key + 1);
     } catch (error) {
       console.error(
         "Failed to resolve report:",
         error
+      );
+      setReportsError(
+        error instanceof Error ? error.message : "Failed to resolve report."
       );
     }
   };
@@ -399,22 +346,98 @@ export default function AuthorityDashboard() {
               </div>
 
               <div className="text-sm text-slate-400">
-                {reports.length}{" "}
-                {reports.length === 1
-                  ? "report"
-                  : "reports"}
+                {totalReports} {totalReports === 1 ? "report" : "reports"}
               </div>
 
+            </div>
+
+            <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <input
+                type="search"
+                value={search}
+                onChange={(event) => {
+                  setPage(1);
+                  setSearch(event.target.value);
+                }}
+                placeholder="Search assigned reports"
+                aria-label="Search assigned reports"
+                className="min-w-0 rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white outline-none focus:border-cyan-300/40"
+              />
+              <select
+                value={statusFilter}
+                onChange={(event) => {
+                  setPage(1);
+                  setStatusFilter(event.target.value);
+                }}
+                aria-label="Filter by status"
+                className="rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white outline-none focus:border-cyan-300/40"
+              >
+                <option value="all">All statuses</option>
+                <option value="Assigned">Assigned</option>
+                <option value="In Progress">In Progress</option>
+                <option value="Resolved">Resolved</option>
+                <option value="Under Review">Under Review</option>
+                <option value="Reported">Reported</option>
+              </select>
+              <select
+                value={categoryFilter}
+                onChange={(event) => {
+                  setPage(1);
+                  setCategoryFilter(event.target.value);
+                }}
+                aria-label="Filter by category"
+                className="rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white outline-none focus:border-cyan-300/40"
+              >
+                <option value="all">All categories</option>
+                <option value="Road Damage">Road Damage</option>
+                <option value="Garbage">Garbage</option>
+                <option value="Streetlight">Streetlight</option>
+                <option value="Water Leakage">Water Leakage</option>
+                <option value="Drainage">Drainage</option>
+                <option value="Other">Other</option>
+              </select>
+              <select
+                value={priorityFilter}
+                onChange={(event) => {
+                  setPage(1);
+                  setPriorityFilter(event.target.value);
+                }}
+                aria-label="Filter by priority"
+                className="rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white outline-none focus:border-cyan-300/40"
+              >
+                <option value="all">All priorities</option>
+                <option value="Critical">Critical</option>
+                <option value="High">High</option>
+                <option value="Normal">Normal</option>
+                <option value="Low">Low</option>
+              </select>
             </div>
 
           </div>
 
           <div className="divide-y divide-white/5">
 
-            {reports.length === 0 ? (
+            {reportsError ? (
+              <div role="alert" className="p-8 text-center">
+                <p className="text-red-200">{reportsError}</p>
+                <button
+                  type="button"
+                  onClick={() => setReloadKey((key) => key + 1)}
+                  className="mt-3 rounded-lg border border-white/10 px-4 py-2 text-sm text-slate-200 hover:bg-white/5"
+                >
+                  Retry
+                </button>
+              </div>
+            ) : reportsLoading ? (
+              <div className="p-8 text-center text-slate-400">
+                Loading assigned reports…
+              </div>
+            ) : reports.length === 0 ? (
 
               <div className="p-8 text-center text-slate-400">
-                No reports found.
+                {stats?.assigned === 0
+                  ? "No reports have been assigned to you yet."
+                  : "No reports match the selected filters."}
               </div>
 
             ) : (
@@ -423,7 +446,7 @@ export default function AuthorityDashboard() {
 
                 <div
                   key={report._id}
-                  className="p-5 space-y-5 hover:bg-white/[0.02] transition"
+                  className="p-5 space-y-5 hover:bg-white/2 transition"
                 >
 
                   {/* =========================
@@ -478,53 +501,41 @@ export default function AuthorityDashboard() {
 
                   </div>
 
+                  <div className="flex flex-wrap gap-x-5 gap-y-1 text-xs text-slate-500">
+                    {typeof report.userId === "object" && report.userId && (
+                      <span>Reported by {report.userId.name}</span>
+                    )}
+                    {report.assignedAt && (
+                      <span>Assigned {new Date(report.assignedAt).toLocaleDateString()}</span>
+                    )}
+                    {report.createdAt && (
+                      <span>Submitted {new Date(report.createdAt).toLocaleDateString()}</span>
+                    )}
+                  </div>
+
+                  {(report.imageUrls?.length || report.imageUrl) && (
+                    <div className="flex flex-wrap gap-3">
+                      {(report.imageUrls?.length
+                        ? report.imageUrls
+                        : report.imageUrl
+                          ? [report.imageUrl]
+                          : []
+                      ).map((imageUrl) => (
+                        <img
+                          key={imageUrl}
+                          src={apiUrl(imageUrl)}
+                          alt={`Evidence for ${report.title}`}
+                          className="h-24 w-32 rounded-lg border border-white/10 object-cover"
+                        />
+                      ))}
+                    </div>
+                  )}
+
                   {/* =========================
                       CONTROLS
                   ========================= */}
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-
-                    {/* ASSIGN AUTHORITY */}
-
-                    <div>
-
-                      <label className="block text-sm text-slate-400 mb-2">
-                        Assign Authority
-                      </label>
-
-                      <select
-                        value={
-                          report.authorityId || ""
-                        }
-                        onChange={(e) =>
-                          assignReport(
-                            report._id,
-                            e.target.value
-                          )
-                        }
-                        className="w-full bg-slate-800 border border-white/10 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500"
-                      >
-
-                        <option value="">
-                          Select authority
-                        </option>
-
-                        {authorities.map(
-                          (authority) => (
-
-                            <option
-                              key={authority._id}
-                              value={authority._id}
-                            >
-                              {authority.name}
-                            </option>
-
-                          )
-                        )}
-
-                      </select>
-
-                    </div>
 
                     {/* STATUS */}
 
@@ -675,6 +686,28 @@ export default function AuthorityDashboard() {
             )}
 
           </div>
+
+          {pages > 1 && !reportsError && (
+            <div className="flex items-center justify-between border-t border-white/5 px-5 py-4 text-sm">
+              <button
+                type="button"
+                onClick={() => setPage((current) => Math.max(1, current - 1))}
+                disabled={page <= 1 || reportsLoading}
+                className="rounded-lg border border-white/10 px-3 py-2 text-slate-300 disabled:opacity-40"
+              >
+                Previous
+              </button>
+              <span className="text-slate-400">Page {page} of {pages}</span>
+              <button
+                type="button"
+                onClick={() => setPage((current) => Math.min(pages, current + 1))}
+                disabled={page >= pages || reportsLoading}
+                className="rounded-lg border border-white/10 px-3 py-2 text-slate-300 disabled:opacity-40"
+              >
+                Next
+              </button>
+            </div>
+          )}
 
         </div>
 

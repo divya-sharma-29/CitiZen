@@ -1,7 +1,9 @@
+
 import { useState, useEffect } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 
 import SplashScreen from "./components/SplashScreen/SplashScreen";
+import ProtectedRoute from "./components/ProtectedRoute";
 
 import Landing from "./pages/Landing/Landing";
 import Features from "./pages/Features/Features";
@@ -18,6 +20,11 @@ import AuthorityDashboard from "./pages/AuthorityDashboard/AuthorityDashboard";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import AdminDashboard from "./pages/AdminDashboard/AdminDashboard";
+import Profile from "./pages/Profile/Profile";
+
+// Keep these arrays outside App so they remain stable between renders.
+const AUTHORITY_ROLES = ["authority"];
+const ADMIN_ROLES = ["admin"];
 
 function App() {
   const [loading, setLoading] = useState(true);
@@ -37,44 +44,37 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
-
-        {/* PUBLIC LANDING */}
+        {/* PUBLIC PAGES */}
         <Route path="/" element={<Landing />} />
-
-        {/* NEW MARKETING PAGES */}
         <Route path="/features" element={<Features />} />
         <Route path="/about" element={<About />} />
 
-        {/* AUTH */}
+        {/* AUTHENTICATION PAGES */}
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
 
-        {/* USER */}
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/report" element={<ReportIssue />} />
-        <Route path="/my-reports" element={<MyReports />} />
-        <Route path="/civic-map" element={<CivicMap />} />
-        <Route path="/reports/:id" element={<ReportDetails />} />
-        <Route path="/notifications" element={<Notifications />} />
-        <Route path="/admin" element={<AdminDashboard />}/>
+        {/* ANY AUTHENTICATED USER */}
+        <Route element={<ProtectedRoute />}>
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/report" element={<ReportIssue />} />
+          <Route path="/my-reports" element={<MyReports />} />
+          <Route path="/civic-map" element={<CivicMap />} />
+          <Route path="/reports/:id" element={<ReportDetails />} />
+          <Route path="/notifications" element={<Notifications />} />
+          <Route path="/profile" element={<Profile />} />
+        </Route>
 
-        {/* AUTHORITY */}
-        <Route
-          path="/authority"
-          element={<AuthorityDashboard />}
-        />
+        {/* AUTHORITY ONLY */}
+        <Route element={<ProtectedRoute allowedRoles={AUTHORITY_ROLES} />}>
+          <Route path="/authority" element={<AuthorityDashboard />} />
+        </Route>
 
-        {/* PASSWORD */}
-        <Route
-          path="/forgot-password"
-          element={<ForgotPassword />}
-        />
-
-        <Route
-          path="/reset-password"
-          element={<ResetPassword />}
-        />
-
+        {/* ADMIN ONLY */}
+        <Route element={<ProtectedRoute allowedRoles={ADMIN_ROLES} />}>
+          <Route path="/admin" element={<AdminDashboard />} />
+        </Route>
       </Routes>
     </BrowserRouter>
   );

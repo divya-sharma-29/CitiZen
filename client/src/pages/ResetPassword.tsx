@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { apiUrl } from "../lib/api";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
   Lock,
@@ -57,7 +58,7 @@ function ResetPassword() {
 
     try {
       const response = await fetch(
-        "http://localhost:5000/api/auth/reset-password",
+        apiUrl("/api/auth/reset-password"),
         {
           method: "POST",
           headers: {

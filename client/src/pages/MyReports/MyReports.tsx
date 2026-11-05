@@ -8,6 +8,7 @@ interface Report {
   category: string;
   location: string;
   imageUrl: string | null;
+  imageUrls?: string[];
   status: string;
   createdAt: string;
 }
@@ -174,13 +175,19 @@ function MyReports() {
               >
 
                 {/* Report Image */}
-                {report.imageUrl && (
+                {(report.imageUrls?.length
+                  ? report.imageUrls
+                  : report.imageUrl
+                    ? [report.imageUrl]
+                    : []
+                ).map((imageUrl, index) => (
                   <img
-                    src={`http://localhost:5000${report.imageUrl}`}
-                    alt={report.title}
-                    className="w-full max-h-80 object-cover rounded-xl mb-6"
+                    key={`${imageUrl}-${index}`}
+                    src={`http://localhost:5000${imageUrl}`}
+                    alt={`${report.title} evidence ${index + 1}`}
+                    className="mb-4 max-h-80 w-full rounded-xl object-cover"
                   />
-                )}
+                ))}
 
                 {/* Title + Status */}
                 <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">

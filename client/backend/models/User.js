@@ -23,14 +23,15 @@ const userSchema = new mongoose.Schema(
 
     role: {
       type: String,
-
-      enum: [
-        "citizen",
-        "authority",
-        "admin",
-      ],
-
+      enum: ["citizen", "authority", "admin"],
       default: "citizen",
+    },
+
+    // Authority accounts require admin approval.
+    authorityStatus: {
+      type: String,
+      enum: ["not_applicable", "pending", "approved", "rejected"],
+      default: "not_applicable",
     },
 
     department: {
@@ -48,14 +49,21 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
-  },
 
+    deletedAt: {
+      type: Date,
+      default: null,
+    },
+
+    deletedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
+  },
   {
     timestamps: true,
   }
 );
 
-module.exports = mongoose.model(
-  "User",
-  userSchema
-);
+module.exports = mongoose.model("User", userSchema);

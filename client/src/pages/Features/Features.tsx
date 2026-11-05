@@ -1,7 +1,6 @@
 import { Link } from "react-router-dom";
 import {
   ArrowRight,
-  FilePlus,
   Map,
   ClipboardList,
   Bell,
@@ -510,6 +509,31 @@ function Features() {
 
                 ))}
 
+              </div>
+
+              <div className="mt-8 grid gap-4 md:grid-cols-2">
+                {authorityFeatures.map((feature) => {
+                  const Icon = feature.icon;
+
+                  return (
+                    <div
+                      key={feature.title}
+                      className="rounded-2xl border border-white/10 bg-slate-950/70 p-5"
+                    >
+                      <div className="w-11 h-11 rounded-xl bg-green-500/10 text-green-400 flex items-center justify-center">
+                        <Icon size={22} />
+                      </div>
+
+                      <h3 className="font-semibold mt-4 text-lg">
+                        {feature.title}
+                      </h3>
+
+                      <p className="text-slate-400 text-sm mt-2 leading-6">
+                        {feature.text}
+                      </p>
+                    </div>
+                  );
+                })}
               </div>
 
               <Link

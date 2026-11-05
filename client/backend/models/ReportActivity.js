@@ -48,6 +48,11 @@ const reportActivitySchema = new mongoose.Schema(
   }
 );
 
+reportActivitySchema.index({
+  reportId: 1,
+  createdAt: -1,
+});
+
 module.exports = mongoose.model(
   "ReportActivity",
   reportActivitySchema

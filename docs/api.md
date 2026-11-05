@@ -207,3 +207,61 @@ Returns statistics for the admin dashboard.
 - AI Prediction
 - Citizen Impact Score
 - Leaderboards
+
+---
+
+# Current Admin and Assignment APIs
+
+All endpoints in this section require a valid JWT and administrator role unless noted otherwise.
+
+## List users
+
+GET /api/admin/users?page=1&limit=20&search=&role=all&status=all
+
+Returns a paginated user list. `role` accepts `citizen`, `authority`, `admin`, or `all`. `status` accepts `active`, `suspended`, `removed`, or `all`.
+
+## Update account status
+
+PATCH /api/admin/users/:id/status
+
+Body: `{ "isActive": false }` suspends an account; `true` reactivates a suspended account. Removed accounts must use the restore endpoint. Administrator accounts cannot be suspended here.
+
+## Check account impact
+
+GET /api/admin/users/:id/impact
+
+Returns the submitted report count and active assigned report count for confirmation before removal.
+
+## Remove account
+
+DELETE /api/admin/users/:id
+
+Soft-removes and anonymizes a citizen or authority account while preserving report and activity records. For an authority with active reports, the request must include exactly one of `reassignAuthorityId` (an active approved authority) or `leaveUnassigned: true`. Unassigned reports are returned to `Reported` and administrators are notified. Removed accounts require a password reset after restoration.
+
+## Restore account
+
+POST /api/admin/users/:id/restore
+
+Restores the original name and email if the address is still available, reactivates the account, and requires a password reset before sign-in.
+
+## Admin audit history
+
+GET /api/admin/audit-logs?page=1&limit=25
+
+Returns recent account, role, and report assignment actions.
+
+## Admin report list and assignment
+
+GET /api/admin/reports?page=1&limit=10&unassigned=true&status=Reported&search=
+
+Returns reports, aggregate counts, assignment history, and pagination.
+
+PATCH /api/reports/:id/assign
+
+Body: `{ "authorityId": "..." }`. Only administrators may assign or reassign a report, and the target must be an active, approved authority.
+
+## Authority queue
+
+GET /api/authority/reports?page=1&limit=10&status=Assigned&category=Road%20Damage&priority=High&search=
+
+Requires an active, approved authority JWT. The server scopes reports and summary counts to the authenticated authority; the client cannot select another authority's ID.
