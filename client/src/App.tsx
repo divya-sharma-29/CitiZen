@@ -1,13 +1,12 @@
 
 import { useState, useEffect } from "react";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 
 import SplashScreen from "./components/SplashScreen/SplashScreen";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 import Landing from "./pages/Landing/Landing";
 import Features from "./pages/Features/Features";
-import About from "./pages/About/About";
 import Login from "./pages/Login/Login";
 import Register from "./pages/Register/Register";
 import Dashboard from "./pages/Dashboard/Dashboard";
@@ -46,8 +45,9 @@ function App() {
       <Routes>
         {/* PUBLIC PAGES */}
         <Route path="/" element={<Landing />} />
-        <Route path="/features" element={<Features />} />
-        <Route path="/about" element={<About />} />
+        <Route path="/explore" element={<Features />} />
+        <Route path="/features" element={<Navigate to="/explore" replace />} />
+        <Route path="/about" element={<Navigate to="/explore" replace />} />
 
         {/* AUTHENTICATION PAGES */}
         <Route path="/login" element={<Login />} />

@@ -167,17 +167,10 @@ function Navbar() {
           </Link>
 
           <Link
-            to="/features"
+            to="/explore"
             className="text-sm text-slate-300 transition hover:text-white"
           >
-            Features
-          </Link>
-
-          <Link
-            to="/about"
-            className="text-sm text-slate-300 transition hover:text-white"
-          >
-            About
+            Explore
           </Link>
 
           <Link
@@ -394,8 +387,7 @@ function Navbar() {
           <div className="mx-auto grid max-w-7xl gap-1">
             {[
               ["/", "Home"],
-              ["/features", "Features"],
-              ["/about", "About"],
+              ["/explore", "Explore CitiZen"],
               ["/civic-map", "Civic map"],
             ].map(([to, label]) => (
               <Link

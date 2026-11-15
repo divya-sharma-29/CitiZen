@@ -2,7 +2,7 @@ import Button from "../Button/Button";
 
 function CTA() {
   return (
-    <section className="relative overflow-hidden bg-gradient-to-r from-blue-700 via-blue-600 to-cyan-500 py-28 px-8">
+    <section className="relative overflow-hidden bg-gradient-to-r from-blue-700 via-blue-600 to-cyan-500 py-14 sm:py-16 lg:py-20 px-8">
 
       {/* Background Glow */}
       <div className="absolute -top-20 -left-20 w-96 h-96 bg-white/10 rounded-full blur-3xl"></div>

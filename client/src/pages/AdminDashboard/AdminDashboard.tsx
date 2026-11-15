@@ -79,7 +79,9 @@ export default function AdminDashboard() {
   const [userActionId, setUserActionId] = useState("");
   const [removalTarget, setRemovalTarget] = useState<User | null>(null);
   const [removalImpactCount, setRemovalImpactCount] = useState(0);
+  const [submittedReportCount, setSubmittedReportCount] = useState(0);
   const [removalImpactLoading, setRemovalImpactLoading] = useState(false);
+  const [removalImpactError, setRemovalImpactError] = useState("");
   const [removalDisposition, setRemovalDisposition] = useState("");
   const [auditLogs, setAuditLogs] = useState<AdminAuditLog[]>([]);
   const [auditError, setAuditError] = useState("");
@@ -363,7 +365,7 @@ export default function AdminDashboard() {
 
       setSuccess(data.message);
       setRemovalTarget(null);
-      await Promise.all([loadUsers(), loadAuditLogs()]);
+      await Promise.all([loadUsers(), loadAuditLogs(), loadReports(), loadAdminData()]);
     } catch (actionError) {
       setError(actionError instanceof Error ? actionError.message : "Unable to remove account.");
     } finally {
@@ -434,8 +436,10 @@ export default function AdminDashboard() {
   }, [loadAuditLogs, token]);
 
   useEffect(() => {
-    if (!removalTarget || removalTarget.role !== "authority") return;
+    if (!removalTarget) return;
     const controller = new AbortController();
+    setRemovalImpactLoading(true);
+    setRemovalImpactError("");
 
     fetch(apiUrl(`/api/admin/users/${removalTarget._id}/impact`), {
       headers: { Authorization: `Bearer ${token}` },
@@ -443,17 +447,16 @@ export default function AdminDashboard() {
     })
       .then(async (response) => {
         const data = await response.json();
-        if (!response.ok) {
-          throw new Error(data.message || "Unable to check assigned reports.");
-        }
+        if (!response.ok) throw new Error(data.message || "Unable to check account reports.");
         setRemovalImpactCount(data.activeAssignedReports || 0);
+        setSubmittedReportCount(data.submittedReports || 0);
       })
       .catch((impactError: unknown) => {
         if (impactError instanceof DOMException && impactError.name === "AbortError") return;
-        setUsersError(
+        setRemovalImpactError(
           impactError instanceof Error
             ? impactError.message
-            : "Unable to check assigned reports."
+            : "Unable to check account reports."
         );
       })
       .finally(() => {
@@ -1346,9 +1349,11 @@ export default function AdminDashboard() {
                           type="button"
                           onClick={() => {
                             setError("");
-                            setRemovalImpactLoading(user.role === "authority");
+                            setRemovalImpactLoading(true);
+                            setRemovalImpactError("");
                             setRemovalTarget(user);
                             setRemovalImpactCount(0);
+                            setSubmittedReportCount(0);
                             setRemovalDisposition("");
                           }}
                           disabled={userActionId === user._id}
@@ -1455,12 +1460,24 @@ export default function AdminDashboard() {
               Remove {removalTarget.role} account?
             </h2>
             <p className="mt-3 text-sm text-slate-300">
-              This will disable sign-in and retain the account record, reports, and history for auditability.
+              This disables sign-in and removes the account’s submitted reports, report images, comments, ratings, and related report history. The account record remains in the removed-users list for restore.
             </p>
             <div className="mt-4 rounded-xl border border-white/10 bg-slate-950/70 p-4">
               <p className="font-medium text-white">{removalTarget.name}</p>
               <p className="mt-1 text-sm text-slate-400">{removalTarget.email}</p>
               <p className="mt-1 text-xs capitalize text-slate-500">{removalTarget.role}</p>
+            </div>
+
+            <div className="mt-4 rounded-xl border border-red-300/20 bg-red-400/5 p-4">
+              {removalImpactLoading ? (
+                <p className="text-sm text-slate-300">Checking account data…</p>
+              ) : removalImpactError ? (
+                <p role="alert" className="text-sm text-red-200">{removalImpactError}</p>
+              ) : (
+                <p className="text-sm text-red-100">
+                  {submittedReportCount} submitted report{submittedReportCount === 1 ? "" : "s"} will be permanently removed with their attachments and activity.
+                </p>
+              )}
             </div>
 
             {removalTarget.role === "authority" && (
@@ -1511,6 +1528,7 @@ export default function AdminDashboard() {
                 disabled={
                   Boolean(userActionId) ||
                   removalImpactLoading ||
+                  Boolean(removalImpactError) ||
                   (removalTarget.role === "authority" && removalImpactCount > 0 && !removalDisposition)
                 }
                 className="rounded-xl border border-red-300/20 bg-red-400/10 px-4 py-3 text-sm font-semibold text-red-100 hover:bg-red-400/20 disabled:opacity-50"

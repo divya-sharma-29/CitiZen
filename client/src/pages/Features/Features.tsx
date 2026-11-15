@@ -6,7 +6,6 @@ import {
   Bell,
   BrainCircuit,
   MapPinned,
-  Activity,
   Users,
   ShieldCheck,
   Camera,
@@ -19,6 +18,7 @@ import {
 
 import Navbar from "../../components/Navbar/Navbar";
 import Footer from "../../components/Footer/Footer";
+import ExploreVisual from "./ExploreVisual";
 
 import citizenReporting from "../../assets/citizen-reporting.jpg";
 import civicDashboard from "../../assets/civic-dashboard.jpg";
@@ -80,11 +80,6 @@ function Features() {
       text: "Give responsible authorities a dedicated environment for reviewing incoming civic issues.",
     },
     {
-      icon: Activity,
-      title: "Issue Lifecycle",
-      text: "Move reports through meaningful states such as reported, reviewed, assigned and resolved.",
-    },
-    {
       icon: Users,
       title: "Community Context",
       text: "Community interactions can provide additional information around issues affecting multiple people.",
@@ -109,30 +104,84 @@ function Features() {
 
         <div className="absolute inset-0 bg-gradient-to-br from-indigo-950/60 via-slate-950 to-slate-950" />
 
-        <div className="relative max-w-7xl mx-auto px-6 py-28">
+        <div className="relative max-w-7xl mx-auto grid items-center gap-10 px-6 py-16 sm:py-20 lg:grid-cols-[1.05fr_0.95fr] lg:gap-8 lg:py-16">
 
-          <div className="max-w-4xl">
+          <div className="max-w-3xl">
 
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-purple-500/10 border border-purple-400/20 text-purple-300 text-sm">
               <Sparkles size={16} />
-              CitiZen Intelligence Layer
+              Explore CitiZen
             </div>
 
-            <h1 className="text-5xl md:text-7xl font-bold leading-tight mt-7">
-              A civic report contains more information than
-              <span className="text-purple-500"> a complaint.</span>
+            <h1 className="text-4xl sm:text-5xl xl:text-6xl font-bold leading-[1.08] mt-7">
+              Civic observations deserve a clear path to action.
             </h1>
 
             <p className="mt-7 text-lg md:text-xl text-slate-400 max-w-3xl leading-8">
-              CitiZen combines evidence, location, classification, severity,
-              community signals and workflow data to turn an individual report
-              into structured civic information.
+              The people who experience a city's problems often see them first.
+              CitiZen gives those observations a shared, structured record so
+              communities and responsible teams can understand what needs
+              attention and follow what happens next.
             </p>
 
           </div>
 
+          <ExploreVisual />
+
         </div>
 
+      </section>
+
+
+      {/* ================= WHY CITIZEN ================= */}
+
+      <section className="max-w-7xl mx-auto px-6 py-20">
+        <div className="max-w-3xl">
+          <p className="text-cyan-300 uppercase tracking-[0.25em] font-semibold text-sm">
+            The context
+          </p>
+          <h2 className="text-4xl md:text-5xl font-bold mt-4">
+            Everyday issues add up to a citywide challenge.
+          </h2>
+          <p className="text-slate-400 mt-6 leading-8">
+            Urban growth puts more pressure on infrastructure. Clear, connected
+            reports help make local problems easier to understand alongside
+            that larger picture.
+          </p>
+        </div>
+
+        <div className="grid md:grid-cols-3 gap-5 mt-12">
+          <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-7">
+            <span className="text-4xl font-bold text-cyan-300">600M</span>
+            <h3 className="text-lg font-semibold mt-4">Urban residents</h3>
+            <p className="text-slate-400 mt-3 leading-7 text-sm">
+              The World Bank estimates that around 600 million people could
+              live in India's urban areas by 2036.
+            </p>
+          </div>
+          <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-7">
+            <span className="text-4xl font-bold text-blue-300">$840B</span>
+            <h3 className="text-lg font-semibold mt-4">Infrastructure need</h3>
+            <p className="text-slate-400 mt-3 leading-7 text-sm">
+              The World Bank estimated India would need about $840 billion in
+              urban infrastructure investment through 2036.
+            </p>
+          </div>
+          <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-7">
+            <span className="text-4xl font-bold text-emerald-300">63%</span>
+            <h3 className="text-lg font-semibold mt-4">Bengaluru pothole area</h3>
+            <p className="text-slate-400 mt-3 leading-7 text-sm">
+              BBMP data reported in 2025 showed a 63% year-on-year increase in
+              the area of potholes filled in 2024–25.
+            </p>
+          </div>
+        </div>
+        <p className="mt-6 text-xs text-slate-600 leading-6">
+          Figures are from the cited reporting periods, based on World Bank
+          assessments of India's urban infrastructure and urbanization and
+          publicly reported BBMP data. They are historical context, not live
+          measurements.
+        </p>
       </section>
 
 
@@ -451,16 +500,16 @@ function Features() {
 
       <section className="border-y border-white/10 bg-slate-900/40">
 
-        <div className="max-w-7xl mx-auto px-6 py-24">
+        <div className="max-w-7xl mx-auto px-6 py-16">
 
-          <div className="grid lg:grid-cols-2 gap-16 items-center">
+          <div className="grid lg:grid-cols-2 gap-10 items-center">
 
             <div className="order-2 lg:order-1">
 
               <img
                 src={civicDashboard}
                 alt="Civic analytics dashboard"
-                className="w-full h-[430px] object-cover rounded-3xl border border-white/10"
+                className="w-full h-[260px] sm:h-[320px] lg:h-[420px] object-cover rounded-3xl border border-white/10"
               />
 
             </div>
@@ -497,7 +546,7 @@ function Features() {
                     className="flex items-center gap-4"
                   >
 
-                    <div className="w-8 h-8 rounded-full bg-green-500/10 text-green-400 flex items-center justify-center text-xs font-bold">
+                    <div className="w-8 h-8 rounded-full bg-green-500/10 text-green-400 flex items-center justify-center text-xs font-bold shrink-0">
                       {index + 1}
                     </div>
 
@@ -511,34 +560,9 @@ function Features() {
 
               </div>
 
-              <div className="mt-8 grid gap-4 md:grid-cols-2">
-                {authorityFeatures.map((feature) => {
-                  const Icon = feature.icon;
-
-                  return (
-                    <div
-                      key={feature.title}
-                      className="rounded-2xl border border-white/10 bg-slate-950/70 p-5"
-                    >
-                      <div className="w-11 h-11 rounded-xl bg-green-500/10 text-green-400 flex items-center justify-center">
-                        <Icon size={22} />
-                      </div>
-
-                      <h3 className="font-semibold mt-4 text-lg">
-                        {feature.title}
-                      </h3>
-
-                      <p className="text-slate-400 text-sm mt-2 leading-6">
-                        {feature.text}
-                      </p>
-                    </div>
-                  );
-                })}
-              </div>
-
               <Link
                 to="/authority"
-                className="inline-flex items-center gap-2 mt-8 px-6 py-3 rounded-xl bg-green-600 hover:bg-green-500 transition font-semibold"
+                className="inline-flex items-center gap-2 mt-7 px-6 py-3 rounded-xl bg-green-600 hover:bg-green-500 transition font-semibold"
               >
                 Open Authority Portal
                 <ArrowRight size={18} />
@@ -550,6 +574,40 @@ function Features() {
 
         </div>
 
+      </section>
+
+
+      {/* ================= AUTHORITY TOOLS ================= */}
+
+      <section className="max-w-7xl mx-auto px-6 py-20">
+        <div className="max-w-3xl">
+          <p className="text-green-400 uppercase tracking-[0.25em] font-semibold text-sm">
+            Tools for response teams
+          </p>
+          <h2 className="text-3xl md:text-4xl font-bold mt-4">
+            A clearer workspace for coordinated action.
+          </h2>
+        </div>
+
+        <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-5 mt-10">
+          {authorityFeatures.map((feature) => {
+            const Icon = feature.icon;
+            return (
+              <div
+                key={feature.title}
+                className="rounded-2xl border border-white/10 bg-slate-900/60 p-6 sm:p-7"
+              >
+                <div className="w-11 h-11 rounded-xl bg-green-500/10 text-green-400 flex items-center justify-center">
+                  <Icon size={22} />
+                </div>
+                <h3 className="font-semibold mt-5 text-lg">{feature.title}</h3>
+                <p className="text-slate-400 text-sm mt-2 leading-6">
+                  {feature.text}
+                </p>
+              </div>
+            );
+          })}
+        </div>
       </section>
 
 

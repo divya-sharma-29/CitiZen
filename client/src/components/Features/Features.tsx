@@ -38,7 +38,7 @@ const highlights = [
 
 function Features() {
   return (
-    <section className="bg-slate-950 text-white py-28 px-6">
+    <section className="bg-slate-950 text-white py-14 sm:py-16 lg:py-20 px-6">
       <div className="max-w-7xl mx-auto">
 
         {/* HEADER */}

@@ -4,35 +4,50 @@ import {
   CheckCircle2,
   AlertTriangle,
 } from "lucide-react";
+import type { CivicStats } from "../../lib/civicStats";
 
-function AIDemo() {
+interface AIDemoProps {
+  stats: CivicStats | null;
+  statsUnavailable: boolean;
+}
+
+function AIDemo({ stats, statsUnavailable }: AIDemoProps) {
+  const latestReport = stats?.latestReport;
+  const priorityScore = latestReport
+    ? Math.max(0, Math.min(100, latestReport.priorityScore))
+    : 0;
+  const confidence =
+    latestReport?.aiVerified === true ? latestReport.aiConfidence : null;
+  const confidencePercent =
+    confidence === null || confidence === undefined
+      ? null
+      : Math.round(confidence <= 1 ? confidence * 100 : confidence);
+
   return (
-    <section className="bg-slate-950 text-white py-28 px-8">
+    <section className="bg-slate-950 text-white py-14 sm:py-16 lg:py-20 px-5 sm:px-8">
 
-      <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-20 items-center">
+      <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-10 lg:gap-14 items-center">
 
         {/* Left */}
 
         <div>
 
           <p className="uppercase tracking-[0.3em] text-blue-400 font-semibold">
-            AI Intelligence
+            Live Civic Data
           </p>
 
-          <h2 className="text-5xl font-bold mt-6 leading-tight">
-            Artificial Intelligence
+          <h2 className="text-4xl sm:text-5xl font-bold mt-5 sm:mt-6 leading-tight">
+            Live Civic Insights
             <br />
-            Working Behind Every Report
+            From Report Activity
           </h2>
 
-          <p className="mt-8 text-gray-400 leading-8 text-lg">
-            CitiZen doesn't simply collect complaints.
-            Our AI understands images, detects duplicate reports,
-            prioritizes emergencies, and helps authorities respond
-            faster than traditional systems.
+          <p className="mt-6 sm:mt-8 text-gray-400 leading-7 sm:leading-8 text-base sm:text-lg">
+            Each value below comes from the newest report record. AI results are
+            shown only when they have been recorded for that report.
           </p>
 
-          <div className="mt-12 space-y-8">
+          <div className="mt-8 sm:mt-10 space-y-6 sm:space-y-8">
 
             <div className="flex gap-4">
 
@@ -43,12 +58,11 @@ function AIDemo() {
               <div>
 
                 <h3 className="text-xl font-semibold">
-                  Image Recognition
+                  Report Categories
                 </h3>
 
                 <p className="text-gray-400 mt-2">
-                  Detects potholes, garbage,
-                  water leakage and damaged roads.
+                  Displays the category recorded on each civic report.
                 </p>
 
               </div>
@@ -64,12 +78,11 @@ function AIDemo() {
               <div>
 
                 <h3 className="text-xl font-semibold">
-                  Smart Prioritization
+                  Priority Scoring
                 </h3>
 
                 <p className="text-gray-400 mt-2">
-                  Assigns severity scores automatically
-                  using AI.
+                  Uses the report's recorded priority score and severity.
                 </p>
 
               </div>
@@ -89,8 +102,7 @@ function AIDemo() {
                 </h3>
 
                 <p className="text-gray-400 mt-2">
-                  Prevents multiple reports
-                  for the same issue.
+                  Flags nearby active reports in the same category.
                 </p>
 
               </div>
@@ -103,31 +115,43 @@ function AIDemo() {
 
         {/* Right */}
 
-        <div className="bg-white/10 backdrop-blur-xl rounded-3xl border border-white/10 p-8">
+        <div className="bg-white/10 backdrop-blur-xl rounded-3xl border border-white/10 p-5 sm:p-8">
 
           <h3 className="text-2xl font-bold">
-            AI Analysis
+            Latest Report Snapshot
           </h3>
+          {stats && !statsUnavailable && (
+            <p className="mt-2 text-sm text-cyan-300" aria-live="polite" role="status">
+              Live data refreshes every 30 seconds
+            </p>
+          )}
 
-          <div className="mt-8 space-y-6">
+          {latestReport ? (
+            <div className="mt-8 space-y-6">
+
+            <div>
+              <p className="font-semibold">{latestReport.title}</p>
+              <p className="mt-1 text-sm text-gray-400">
+                Current status: {latestReport.status}
+              </p>
+            </div>
 
             <div>
 
               <div className="flex justify-between">
 
-                <span>Pothole Detection</span>
+                <span>AI Classification</span>
 
                 <span className="text-green-400">
-                  98%
+                  {latestReport.aiVerified
+                    ? latestReport.aiCategory || latestReport.category
+                    : "Not verified"}
                 </span>
 
               </div>
-
-              <div className="mt-2 h-3 bg-slate-700 rounded-full">
-
-                <div className="w-[98%] h-full rounded-full bg-green-500"></div>
-
-              </div>
+              <p className="mt-2 text-sm text-gray-400">
+                Report category: {latestReport.category}
+              </p>
 
             </div>
 
@@ -135,19 +159,18 @@ function AIDemo() {
 
               <div className="flex justify-between">
 
-                <span>Duplicate Match</span>
+                <span>Duplicate Detection</span>
 
                 <span className="text-blue-400">
-                  94%
+                  {latestReport.duplicateDetected ? "Possible match" : "No match"}
                 </span>
 
               </div>
 
-              <div className="mt-2 h-3 bg-slate-700 rounded-full">
-
-                <div className="w-[94%] h-full rounded-full bg-blue-500"></div>
-
-              </div>
+              <p className="mt-2 text-sm text-gray-400">
+                {stats?.duplicateReports ?? 0} duplicate report
+                {(stats?.duplicateReports ?? 0) === 1 ? "" : "s"} recorded
+              </p>
 
             </div>
 
@@ -155,41 +178,72 @@ function AIDemo() {
 
               <div className="flex justify-between">
 
-                <span>Priority Score</span>
+                <span>Priority · {latestReport.priorityScore}/100</span>
 
                 <span className="text-red-400">
-                  Critical
+                  {latestReport.severity}
                 </span>
 
               </div>
 
               <div className="mt-2 h-3 bg-slate-700 rounded-full">
 
-                <div className="w-full h-full rounded-full bg-red-500"></div>
+                <div
+                  className="h-full rounded-full bg-red-500"
+                  style={{ width: `${priorityScore}%` }}
+                ></div>
 
               </div>
 
             </div>
 
-          </div>
+            <p className="text-sm text-gray-400">
+              AI confidence:{" "}
+              {confidencePercent === null
+                ? "Not available"
+                : `${Math.max(0, Math.min(100, confidencePercent))}%`}
+            </p>
 
-          <div className="mt-10 p-5 rounded-xl bg-slate-900">
+            </div>
+          ) : (
+            <p className="mt-8 rounded-xl border border-white/10 bg-slate-900 p-5 text-gray-300" role="status">
+              {statsUnavailable
+                ? "We couldn't load the latest report. Please try again shortly."
+                : stats
+                  ? "No reports have been submitted yet."
+                  : "Loading the latest report..."}
+            </p>
+          )}
+
+          {latestReport && (
+          <div className="mt-8 p-5 rounded-xl bg-slate-900">
 
             <div className="flex gap-3">
 
-              <CheckCircle2
-                className="text-green-400"
-              />
+              {latestReport.aiVerified ? (
+                <CheckCircle2 className="text-green-400" />
+              ) : (
+                <AlertTriangle className="text-yellow-400" />
+              )}
 
               <p className="text-gray-300">
-                AI has verified this report and
-                automatically assigned it to
-                the Road Maintenance Department.
+                {latestReport.aiVerified
+                  ? `AI verification recorded. ${
+                      latestReport.department
+                        ? `Assigned to ${latestReport.department}.`
+                        : "No authority assignment is recorded yet."
+                    }`
+                  : `AI verification has not been recorded. ${
+                      latestReport.department
+                        ? `Assigned to ${latestReport.department}.`
+                        : "No authority assignment is recorded yet."
+                    }`}
               </p>
 
             </div>
 
           </div>
+          )}
 
         </div>
 

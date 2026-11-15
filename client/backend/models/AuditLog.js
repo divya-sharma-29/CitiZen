@@ -15,6 +15,7 @@ const auditLogSchema = new mongoose.Schema(
         "USER_REACTIVATED",
         "USER_REMOVED",
         "USER_RESTORED",
+        "PASSWORD_CHANGED",
         "USER_ROLE_CHANGED",
         "REPORT_ASSIGNED",
         "REPORT_REASSIGNED",

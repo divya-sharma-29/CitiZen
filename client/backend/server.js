@@ -1,6 +1,5 @@
 
 const jwt = require("jsonwebtoken");
-const crypto = require("crypto");
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
@@ -19,7 +18,7 @@ const AuthorityRating = require("./models/AuthorityRating");
 const AuditLog = require("./models/AuditLog");
 
 
-require("dotenv").config();
+require("dotenv").config({ path: path.join(__dirname, ".env") });
 const configuredFeedbackWindow = Number.parseInt(
   process.env.FEEDBACK_WINDOW_DAYS || "30",
   10
@@ -70,6 +69,12 @@ async function protect(req, res, next) {
     if (!user) {
       return res.status(401).json({
         message: "User account no longer exists.",
+      });
+    }
+
+    if ((decoded.authVersion || 0) !== (user.authVersion || 0)) {
+      return res.status(401).json({
+        message: "Your session has ended. Please sign in again.",
       });
     }
 
@@ -683,11 +688,19 @@ app.post("/api/auth/login", async (req, res) => {
       });
     }
 
+    if (user.mustChangePassword) {
+      return res.status(428).json({
+        code: "PASSWORD_CHANGE_REQUIRED",
+        message: "For your account's security, verify your previous password and choose a new one to continue.",
+      });
+    }
+
     const token = jwt.sign(
       {
         id: user._id,
         email: user.email,
         role: user.role,
+        authVersion: user.authVersion || 0,
       },
       process.env.JWT_SECRET,
       {
@@ -713,6 +726,64 @@ app.post("/api/auth/login", async (req, res) => {
     return res.status(500).json({
       message: "Server error during login.",
     });
+  }
+});
+
+app.post("/api/auth/complete-restored-password", async (req, res) => {
+  try {
+    const { email, previousPassword, newPassword } = req.body;
+    if (!email?.trim() || !previousPassword || !newPassword) {
+      return res.status(400).json({ message: "Email, previous password, and new password are required." });
+    }
+    if (newPassword.length < 8) {
+      return res.status(400).json({ message: "New password must be at least 8 characters." });
+    }
+    if (previousPassword === newPassword) {
+      return res.status(400).json({ message: "Choose a new password different from your previous password." });
+    }
+
+    const user = await User.findOne({ email: email.trim().toLowerCase() });
+    if (!user || !user.isActive || user.deletedAt || !user.mustChangePassword) {
+      return res.status(400).json({ message: "This account is not waiting for a password update. Sign in again or use password recovery." });
+    }
+    const matches = await bcrypt.compare(previousPassword, user.password);
+    if (!matches) {
+      return res.status(401).json({ message: "The previous password is incorrect." });
+    }
+    if (user.role === "authority" && user.authorityStatus !== "approved") {
+      return res.status(403).json({ message: "Your authority account is awaiting admin approval." });
+    }
+
+    user.password = await bcrypt.hash(newPassword, 10);
+    user.mustChangePassword = false;
+    await user.save();
+    await AuditLog.create({
+      actorId: user._id,
+      action: "PASSWORD_CHANGED",
+      targetUserId: user._id,
+      summary: "User updated password after account restoration",
+    });
+
+    const token = jwt.sign(
+      { id: user._id, email: user.email, role: user.role, authVersion: user.authVersion || 0 },
+      process.env.JWT_SECRET,
+      { expiresIn: "1d" }
+    );
+    return res.status(200).json({
+      message: "Password updated. You are now signed in.",
+      token,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        department: user.department,
+        authorityStatus: user.authorityStatus,
+      },
+    });
+  } catch (error) {
+    console.error("Restored account password update error:", error);
+    return res.status(500).json({ message: "Unable to update the password. Please try again." });
   }
 });
 
@@ -950,6 +1021,7 @@ app.post(
 
       user.password =
         hashedPassword;
+      user.mustChangePassword = false;
 
       await user.save();
 
@@ -1433,6 +1505,11 @@ app.get(
         inProgress,
         resolved,
         categoryStats,
+        aiVerified,
+        duplicateReports,
+        authoritiesConnected,
+        [responseStats = {}],
+        latestReport,
       ] =
         await Promise.all([
           Report.countDocuments(),
@@ -1480,6 +1557,75 @@ app.get(
               },
             },
           ]),
+          Report.countDocuments({
+            aiVerified: true,
+          }),
+          Report.countDocuments({
+            duplicateOf: { $ne: null },
+          }),
+          User.countDocuments({
+            role: "authority",
+            authorityStatus: "approved",
+            isActive: true,
+            deletedAt: null,
+          }),
+          ReportActivity.aggregate([
+            {
+              $match: {
+                action: {
+                  $in: ["ASSIGNED", "STATUS_CHANGED", "RESOLVED"],
+                },
+              },
+            },
+            {
+              $sort: {
+                createdAt: 1,
+              },
+            },
+            {
+              $group: {
+                _id: "$reportId",
+                firstResponseAt: { $first: "$createdAt" },
+              },
+            },
+            {
+              $lookup: {
+                from: Report.collection.name,
+                localField: "_id",
+                foreignField: "_id",
+                as: "report",
+              },
+            },
+            {
+              $unwind: "$report",
+            },
+            {
+              $project: {
+                responseTimeMs: {
+                  $subtract: ["$firstResponseAt", "$report.createdAt"],
+                },
+              },
+            },
+            {
+              $match: {
+                responseTimeMs: { $gte: 0 },
+              },
+            },
+            {
+              $group: {
+                _id: null,
+                sampleSize: { $sum: 1 },
+                averageResponseTimeMs: { $avg: "$responseTimeMs" },
+              },
+            },
+          ]),
+          Report.findOne()
+            .sort({ createdAt: -1 })
+            .select(
+              "title category status severity priorityScore aiVerified aiCategory aiConfidence duplicateOf assignedTo createdAt"
+            )
+            .populate("assignedTo", "department")
+            .lean(),
         ]);
 
       res.status(200).json({
@@ -1490,6 +1636,31 @@ app.get(
         inProgress,
         resolved,
         categoryStats,
+        aiVerified,
+        duplicateReports,
+        authoritiesConnected,
+        averageResponseHours:
+          responseStats.sampleSize >= 5
+            ? Math.round(
+                (responseStats.averageResponseTimeMs / 3_600_000) * 10
+              ) / 10
+            : null,
+        responseSampleSize: responseStats.sampleSize || 0,
+        latestReport: latestReport
+          ? {
+              title: latestReport.title,
+              category: latestReport.category,
+              status: latestReport.status,
+              severity: latestReport.severity,
+              priorityScore: latestReport.priorityScore,
+              aiVerified: latestReport.aiVerified,
+              aiCategory: latestReport.aiCategory,
+              aiConfidence: latestReport.aiConfidence,
+              duplicateDetected: Boolean(latestReport.duplicateOf),
+              department: latestReport.assignedTo?.department || null,
+              createdAt: latestReport.createdAt,
+            }
+          : null,
       });
 
     } catch (error) {
@@ -3799,6 +3970,7 @@ app.get(
         user.role === "authority"
           ? Report.countDocuments({
               assignedTo: user._id,
+              userId: { $ne: user._id },
               status: { $ne: "Resolved" },
             })
           : Promise.resolve(0),
@@ -3910,6 +4082,7 @@ app.post(
       user.name = restoredName;
       user.email = restoredEmail;
       user.isActive = true;
+      user.mustChangePassword = true;
       user.deletedAt = null;
       user.deletedBy = null;
       await user.save();
@@ -3921,7 +4094,7 @@ app.post(
       });
 
       return res.status(200).json({
-        message: "Account restored. The user must reset their password before signing in.",
+        message: "Account restored. On the next sign-in, the user must verify their previous password and set a new one. Reports deleted during removal will not be restored. If the previous password is no longer known, use Forgot password.",
         user: { _id: user._id, name: user.name, email: user.email, role: user.role },
       });
     } catch (error) {
@@ -4205,10 +4378,19 @@ app.delete(
       }
       const originalName = user.name;
       const originalEmail = user.email;
+      const submittedReports = await Report.find({ userId: user._id })
+        .select("_id imageUrl imageUrls")
+        .lean();
+      const submittedReportIds = submittedReports.map((report) => report._id);
+      const authoredCommentReports = await Comment.distinct("reportId", {
+        userId: user._id,
+        ...(submittedReportIds.length ? { reportId: { $nin: submittedReportIds } } : {}),
+      });
 
       const activeReports = user.role === "authority"
         ? await Report.find({
             assignedTo: user._id,
+            userId: { $ne: user._id },
             status: { $ne: "Resolved" },
           }).select("_id title status assignedTo assignmentHistory")
         : [];
@@ -4312,11 +4494,63 @@ app.delete(
         }
       }
 
+      if (submittedReportIds.length) {
+        await Promise.all([
+          Comment.deleteMany({ reportId: { $in: submittedReportIds } }),
+          ReportActivity.deleteMany({ reportId: { $in: submittedReportIds } }),
+          AuthorityRating.deleteMany({ reportId: { $in: submittedReportIds } }),
+          Notification.deleteMany({ reportId: { $in: submittedReportIds } }),
+          AuditLog.deleteMany({ targetReportId: { $in: submittedReportIds } }),
+          Report.updateMany(
+            { duplicateOf: { $in: submittedReportIds } },
+            { $set: { duplicateOf: null } }
+          ),
+        ]);
+        await Report.deleteMany({ _id: { $in: submittedReportIds }, userId: user._id });
+      }
+
+      // Remove the user's comments and appreciation from other reports too.
+      await Promise.all([
+        Comment.deleteMany({ userId: user._id }),
+        AuthorityRating.deleteMany({
+          $or: [{ citizenId: user._id }, { authorityId: user._id }],
+        }),
+        Notification.deleteMany({ userId: user._id }),
+        Report.updateMany(
+          { appreciatedBy: user._id },
+          { $pull: { appreciatedBy: user._id }, $inc: { appreciationCount: -1 } }
+        ),
+      ]);
+
+      for (const reportId of authoredCommentReports) {
+        const commentCount = await Comment.countDocuments({ reportId });
+        await Report.updateOne({ _id: reportId }, { $set: { commentCount } });
+      }
+
+      const uploadNames = new Set(
+        submittedReports.flatMap((report) => [report.imageUrl, ...(report.imageUrls || [])])
+          .filter((url) => typeof url === "string" && url.startsWith("/uploads/"))
+          .map((url) => path.basename(url))
+      );
+      await Promise.all(
+        [...uploadNames].map(async (filename) => {
+          const uploadPath = path.resolve(__dirname, "uploads", filename);
+          if (path.dirname(uploadPath) !== path.resolve(__dirname, "uploads")) return;
+          try {
+            await fs.promises.unlink(uploadPath);
+          } catch (fileError) {
+            if (fileError.code !== "ENOENT") {
+              console.error("Unable to remove a deleted report image:", fileError);
+            }
+          }
+        })
+      );
+
       user.name = user.role === "authority" ? "Former authority" : "Former citizen";
       user.email = `removed+${user._id}@deleted.citizen.invalid`;
       user.profileImage = null;
-      user.password = await bcrypt.hash(crypto.randomBytes(32).toString("hex"), 10);
       user.isActive = false;
+      user.authVersion = (user.authVersion || 0) + 1;
       user.deletedAt = new Date();
       user.deletedBy = req.user.id;
       await user.save();
@@ -4324,9 +4558,10 @@ app.delete(
         actorId: req.user.id,
         action: "USER_REMOVED",
         targetUserId: user._id,
-        summary: `${user.role} account removed; records retained`,
+        summary: `${user.role} account removed; ${submittedReportIds.length} submitted report(s) deleted`,
         metadata: {
           affectedActiveReports: activeReports.length,
+          deletedSubmittedReports: submittedReportIds.length,
           assignmentDisposition: replacementAuthority
             ? "reassigned"
             : activeReports.length
@@ -4337,15 +4572,9 @@ app.delete(
           originalEmail,
         },
       });
-      await createNotification({
-        userId: user._id,
-        type: "ACCOUNT_REMOVED",
-        title: "Account removed",
-        message: "Your CitiZen account has been removed. Contact an administrator if you believe this was a mistake.",
-      });
-
       return res.status(200).json({
-        message: "Account removed. Existing reports and history were retained.",
+        message: `Account removed. ${submittedReportIds.length} submitted report(s) and their related history were deleted.`,
+        deletedSubmittedReports: submittedReportIds.length,
         affectedActiveReports: activeReports.length,
         assignmentDisposition: replacementAuthority
           ? "reassigned"
@@ -4429,7 +4658,11 @@ if (!process.env.JWT_SECRET) {
 }
 
 mongoose
-  .connect(MONGO_URI)
+  .connect(MONGO_URI, {
+    // Fail promptly when Atlas is unreachable instead of leaving port 5000
+    // closed while Mongoose waits through its default selection timeout.
+    serverSelectionTimeoutMS: 10000,
+  })
   .then(() => {
     console.log(
       "✅ MongoDB connected"
@@ -4449,7 +4682,15 @@ mongoose
       "❌ MongoDB connection failed:"
     );
 
-    console.error(
-      error.message
-    );
+    console.error(error.message);
+    if (/bad auth|authentication failed|code 8000/i.test(error.message)) {
+      console.error(
+        "MongoDB Atlas was reached, but rejected the database credentials. Check the database user's username and password in Atlas and update MONGO_URI in client/backend/.env. URL-encode special characters in the password."
+      );
+    } else {
+      console.error(
+        "Check the MongoDB URI, network access to Atlas, and whether this machine's IP is allowed in the Atlas Network Access list."
+      );
+    }
+    process.exit(1);
   });

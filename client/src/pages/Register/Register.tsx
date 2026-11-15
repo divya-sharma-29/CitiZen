@@ -48,6 +48,11 @@ function Register() {
       return;
     }
 
+    if (role === "authority" && !department) {
+      setError("Please select your department.");
+      return;
+    }
+
     setSubmitting(true);
 
     try {
@@ -97,34 +102,50 @@ function Register() {
   }
 
   const inputClass =
-    "w-full bg-slate-900/70 border border-white/10 rounded-xl py-3 pl-11 pr-4 outline-none focus:border-blue-500 transition";
+    "w-full bg-slate-900/70 border border-white/10 rounded-xl py-2.5 pl-11 pr-4 outline-none focus:border-blue-500 transition";
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-blue-950 text-white flex items-center justify-center px-5 py-10">
-      <div className="w-full max-w-lg">
-        <div className="flex justify-center mb-6">
-          <Link to="/">
+    <div className="grid min-h-dvh place-items-center bg-gradient-to-br from-slate-950 via-slate-900 to-blue-950 px-4 py-3 text-white sm:px-8">
+      <div className="grid w-full max-w-6xl items-center gap-5 lg:grid-cols-[0.8fr_1.2fr] lg:gap-10">
+        <div className="flex flex-col items-center text-center lg:items-start lg:text-left">
+          <Link to="/" aria-label="CitiZen home">
             <img
               src="/logo.png"
               alt="CitiZen Logo"
-              className="w-14 h-14"
+              className="h-12 w-12 rounded-xl shadow-lg shadow-cyan-950/30 sm:h-14 sm:w-14"
             />
+          </Link>
+          <p className="mt-2 text-xs font-semibold uppercase tracking-[0.3em] text-cyan-300 lg:mt-5">
+            CitiZen community
+          </p>
+          <h2 className="mt-1 max-w-md text-2xl font-bold leading-tight sm:text-3xl lg:mt-3 lg:text-4xl">
+            Make your voice part of the change.
+          </h2>
+          <p className="mt-2 max-w-md text-sm leading-6 text-slate-300 sm:text-base lg:mt-4 lg:leading-7">
+            Create an account to report local issues, follow their progress, and
+            help your neighborhood move forward.
+          </p>
+          <Link
+            to="/"
+            className="mt-3 text-sm text-slate-400 transition hover:text-white lg:mt-6"
+          >
+            â† Back to CitiZen
           </Link>
         </div>
 
-        <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-3xl p-6 sm:p-8 shadow-2xl">
-          <h1 className="text-3xl font-bold text-center">
+        <div className="w-full rounded-3xl border border-white/20 bg-white/10 p-4 shadow-2xl backdrop-blur-xl sm:p-5 lg:p-6">
+          <h1 className="text-xl font-bold sm:text-2xl">
             Create your account
           </h1>
 
-          <p className="text-gray-400 text-center mt-3">
+          <p className="mt-1 text-sm text-gray-400">
             Choose how you want to contribute to a better city.
           </p>
 
           {error && (
             <div
               role="alert"
-              className="mt-5 bg-red-500/10 border border-red-500/30 text-red-300 rounded-xl px-4 py-3 text-sm"
+              className="mt-3 rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300"
             >
               {error}
             </div>
@@ -133,24 +154,24 @@ function Register() {
           {success && (
             <div
               role="status"
-              className="mt-5 bg-green-500/10 border border-green-500/30 text-green-300 rounded-xl px-4 py-3 text-sm"
+              className="mt-3 rounded-xl border border-green-500/30 bg-green-500/10 px-3 py-2 text-sm text-green-300"
             >
               {success}
             </div>
           )}
 
           {/* Role selection */}
-          <div className="mt-7">
-            <label className="block text-sm font-medium text-gray-300 mb-3">
+          <div className="mt-3">
+            <label className="mb-1.5 block text-sm font-medium text-gray-300">
               I want to register as
             </label>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-2 sm:gap-3">
               <button
                 type="button"
                 onClick={() => setRole("citizen")}
                 aria-pressed={role === "citizen"}
-                className={`relative text-left p-4 rounded-2xl border transition ${
+                className={`relative flex items-start gap-2 rounded-xl border p-2.5 text-left transition sm:p-3 ${
                   role === "citizen"
                     ? "border-blue-400 bg-blue-500/15 ring-1 ring-blue-400"
                     : "border-white/10 bg-slate-900/50 hover:border-white/30"
@@ -163,20 +184,20 @@ function Register() {
                   />
                 )}
 
-                <Users size={27} className="text-blue-400 mb-3" />
-
-                <h2 className="font-semibold">Citizen</h2>
-
-                <p className="text-sm text-gray-400 mt-2 leading-relaxed">
-                  Report civic issues, track complaints, and help improve your neighbourhood.
-                </p>
+                <Users size={20} className="mt-0.5 shrink-0 text-blue-400" />
+                <div>
+                  <h2 className="font-semibold">Citizen</h2>
+                  <p className="mt-1 text-xs leading-4 text-gray-400">
+                    Report issues and track progress.
+                  </p>
+                </div>
               </button>
 
               <button
                 type="button"
                 onClick={() => setRole("authority")}
                 aria-pressed={role === "authority"}
-                className={`relative text-left p-4 rounded-2xl border transition ${
+                className={`relative flex items-start gap-2 rounded-xl border p-2.5 text-left transition sm:p-3 ${
                   role === "authority"
                     ? "border-cyan-400 bg-cyan-500/15 ring-1 ring-cyan-400"
                     : "border-white/10 bg-slate-900/50 hover:border-white/30"
@@ -189,28 +210,28 @@ function Register() {
                   />
                 )}
 
-                <ShieldCheck size={27} className="text-cyan-400 mb-3" />
-
-                <h2 className="font-semibold">Civic Authority</h2>
-
-                <p className="text-sm text-gray-400 mt-2 leading-relaxed">
-                  Manage assigned civic reports and update resolution progress after approval.
-                </p>
-
-                <span className="inline-block mt-3 text-xs text-cyan-300">
-                  Approval required
-                </span>
+                <ShieldCheck size={20} className="mt-0.5 shrink-0 text-cyan-400" />
+                <div>
+                  <h2 className="font-semibold">Civic Authority</h2>
+                  <p className="mt-1 text-xs leading-4 text-gray-400">
+                    Manage reports after approval.
+                  </p>
+                  <span className="mt-1 inline-block text-[11px] text-cyan-300">
+                    Approval required
+                  </span>
+                </div>
               </button>
             </div>
           </div>
 
+          <div className="mt-3 grid gap-x-3 gap-y-2.5 sm:grid-cols-2">
           {/* Name */}
-          <div className="mt-6">
+          <div>
             <label htmlFor="register-name" className="text-sm text-gray-300">
               Full Name
             </label>
 
-            <div className="relative mt-2">
+              <div className="relative mt-1">
               <User
                 size={18}
                 className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
@@ -230,12 +251,12 @@ function Register() {
           </div>
 
           {/* Email */}
-          <div className="mt-5">
+          <div>
             <label htmlFor="register-email" className="text-sm text-gray-300">
               Email Address
             </label>
 
-            <div className="relative mt-2">
+            <div className="relative mt-1">
               <Mail
                 size={18}
                 className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
@@ -255,7 +276,7 @@ function Register() {
           </div>
 
           {/* Password */}
-          <div className="mt-5">
+          <div>
             <label
               htmlFor="register-password"
               className="text-sm text-gray-300"
@@ -263,7 +284,7 @@ function Register() {
               Password
             </label>
 
-            <div className="relative mt-2">
+            <div className="relative mt-1">
               <Lock
                 size={18}
                 className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
@@ -292,37 +313,33 @@ function Register() {
           </div>
 
           {role === "authority" && (
-  <div>
-    <label htmlFor="department">Department</label>
-    <select
-      id="department"
-      name="department"
-      value={department}
-      onChange={(e) => { setDepartment(e.target.value); setError(""); }}
-      required
-    >
-      <option value="">Select your department</option>
-      <option value="Roads and Infrastructure">
-        Roads and Infrastructure
-      </option>
-      <option value="Water Supply">Water Supply</option>
-      <option value="Sanitation">Sanitation</option>
-      <option value="Drainage">Drainage</option>
-      <option value="Street Lighting">Street Lighting</option>
-    </select>
-  </div>
-)}
+            <div>
+              <label htmlFor="department" className="text-sm text-gray-300">
+                Department
+              </label>
+              <select
+                id="department"
+                name="department"
+                value={department}
+                onChange={(e) => { setDepartment(e.target.value); setError(""); }}
+                className="mt-1 w-full rounded-xl border border-white/10 bg-slate-900/70 px-4 py-2.5 text-white outline-none transition focus:border-blue-500"
+                required
+              >
+                <option value="">Select your department</option>
+                <option value="Roads and Infrastructure">Roads and Infrastructure</option>
+                <option value="Water Supply">Water Supply</option>
+                <option value="Sanitation">Sanitation</option>
+                <option value="Drainage">Drainage</option>
+                <option value="Street Lighting">Street Lighting</option>
+              </select>
+            </div>
+          )}
+          </div>
 
           {role === "authority" && (
-            <div className="mt-5 p-4 rounded-xl border border-cyan-400/20 bg-cyan-400/5">
-              <p className="text-sm text-cyan-200 font-medium">
-                Authority verification
-              </p>
-              <p className="text-xs text-gray-400 mt-1 leading-relaxed">
-                Your request will need administrator approval. Selecting this
-                option alone will not grant authority permissions.
-              </p>
-            </div>
+            <p className="mt-2 text-xs text-cyan-200">
+              Authority access is available after administrator approval.
+            </p>
           )}
 
           {/* Submit */}
@@ -330,7 +347,7 @@ function Register() {
             type="button"
             onClick={handleRegister}
             disabled={submitting}
-            className="w-full mt-7 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed py-3 rounded-xl font-semibold transition flex items-center justify-center gap-2"
+            className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 py-2.5 font-semibold transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {submitting ? (
               <>
@@ -345,7 +362,7 @@ function Register() {
             )}
           </button>
 
-          <p className="text-center text-gray-400 mt-6">
+          <p className="mt-2 text-center text-sm text-gray-400">
             Already have an account?{" "}
             <Link
               to="/login"
@@ -356,14 +373,6 @@ function Register() {
           </p>
         </div>
 
-        <div className="text-center mt-6">
-          <Link
-            to="/"
-            className="text-gray-400 hover:text-white text-sm"
-          >
-            ← Back to CitiZen
-          </Link>
-        </div>
       </div>
     </div>
   );

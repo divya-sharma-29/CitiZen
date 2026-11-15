@@ -15,6 +15,7 @@ import { apiUrl } from "../../lib/api";
 import cityInfrastructure from "../../assets/city-infrastructure.jpg";
 
 interface LoginResponse {
+  code?: string;
   message?: string;
   token?: string;
   user?: {
@@ -36,6 +37,9 @@ function Login() {
   const location = useLocation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmNewPassword, setConfirmNewPassword] = useState("");
+  const [passwordChangeRequired, setPasswordChangeRequired] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -51,19 +55,38 @@ function Login() {
       return;
     }
 
+    if (passwordChangeRequired) {
+      if (newPassword.length < 8) {
+        setError("Your new password must be at least 8 characters.");
+        return;
+      }
+      if (newPassword !== confirmNewPassword) {
+        setError("The new password and confirmation do not match.");
+        return;
+      }
+      if (newPassword === password) {
+        setError("Choose a new password different from your previous password.");
+        return;
+      }
+    }
+
     setSubmitting(true);
 
     try {
-      const response = await fetch(apiUrl("/api/auth/login"), {
+      const response = await fetch(
+        apiUrl(passwordChangeRequired
+          ? "/api/auth/complete-restored-password"
+          : "/api/auth/login"),
+        {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          email: email.trim(),
-          password,
-        }),
-      });
+          body: JSON.stringify(passwordChangeRequired
+            ? { email: email.trim(), previousPassword: password, newPassword }
+            : { email: email.trim(), password }),
+        }
+      );
 
       const data = (await response.json().catch(() => null)) as
         | LoginResponse
@@ -71,11 +94,16 @@ function Login() {
 
       if (!data) {
         throw new Error(
-          "The server returned an unreadable response. Please try again."
+          "The CitiZen API on port 5000 did not return JSON. Start the backend and make sure MongoDB connects."
         );
       }
 
       if (!response.ok) {
+        if (data.code === "PASSWORD_CHANGE_REQUIRED") {
+          setPasswordChangeRequired(true);
+          setSuccess("Your account was restored. Verify your previous password and set a new password to continue.");
+          return;
+        }
         setError(data.message || "We couldn't sign you in.");
         return;
       }
@@ -89,6 +117,7 @@ function Login() {
       localStorage.setItem("token", data.token);
       localStorage.setItem("user", JSON.stringify(data.user));
       window.dispatchEvent(new Event("citizen-session-changed"));
+      setPasswordChangeRequired(false);
 
       const state = location.state as LoginNavigationState | null;
       const requestedPath =
@@ -107,7 +136,9 @@ function Login() {
             ? "/authority"
             : "/dashboard";
 
-      setSuccess(`Welcome back, ${data.user.name}.`);
+      setSuccess(passwordChangeRequired
+        ? "Password updated successfully. Welcome back!"
+        : `Welcome back, ${data.user.name}.`);
       navigate(safeRequestedPath || defaultPath, { replace: true });
     } catch (loginError) {
       console.error("Login request failed:", loginError);
@@ -278,7 +309,7 @@ function Login() {
                       htmlFor="login-password"
                       className="text-sm font-medium text-slate-200"
                     >
-                      Password
+                      {passwordChangeRequired ? "Previous password" : "Password"}
                     </label>
                     <Link
                       to="/forgot-password"
@@ -299,7 +330,10 @@ function Login() {
                       autoComplete="current-password"
                       placeholder="Enter your password"
                       value={password}
-                      onChange={(event) => setPassword(event.target.value)}
+                      onChange={(event) => {
+                        setPassword(event.target.value);
+                        setError("");
+                      }}
                       className={`${inputClass} pr-12`}
                       required
                       disabled={submitting}
@@ -322,12 +356,59 @@ function Login() {
                   </div>
                 </div>
 
+                {passwordChangeRequired && (
+                  <>
+                    <div>
+                      <label htmlFor="login-new-password" className="text-sm font-medium text-slate-200">
+                        New password
+                      </label>
+                      <div className="relative mt-2">
+                        <LockKeyhole size={17} aria-hidden="true" className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
+                        <input
+                          id="login-new-password"
+                          type="password"
+                          autoComplete="new-password"
+                          placeholder="At least 8 characters"
+                          value={newPassword}
+                          onChange={(event) => setNewPassword(event.target.value)}
+                          className={inputClass}
+                          minLength={8}
+                          required
+                          disabled={submitting}
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label htmlFor="login-confirm-password" className="text-sm font-medium text-slate-200">
+                        Confirm new password
+                      </label>
+                      <div className="relative mt-2">
+                        <LockKeyhole size={17} aria-hidden="true" className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
+                        <input
+                          id="login-confirm-password"
+                          type="password"
+                          autoComplete="new-password"
+                          placeholder="Enter the new password again"
+                          value={confirmNewPassword}
+                          onChange={(event) => setConfirmNewPassword(event.target.value)}
+                          className={inputClass}
+                          minLength={8}
+                          required
+                          disabled={submitting}
+                        />
+                      </div>
+                    </div>
+                  </>
+                )}
+
                 <button
                   type="submit"
                   disabled={submitting}
                   className="group mt-2 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 px-5 py-3 font-semibold shadow-lg shadow-blue-950/40 transition hover:-translate-y-0.5 hover:shadow-cyan-900/30 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-200 disabled:cursor-wait disabled:opacity-70 motion-reduce:transform-none"
                 >
-                  {submitting ? "Signing in…" : "Sign in"}
+                  {submitting
+                    ? passwordChangeRequired ? "Updating password…" : "Signing in…"
+                    : passwordChangeRequired ? "Update password and continue" : "Sign in"}
                   {!submitting && (
                     <ArrowRight
                       size={17}
