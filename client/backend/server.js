@@ -196,7 +196,24 @@ const app = express();
 // BASIC MIDDLEWARE
 // ======================================================
 
-app.use(cors());
+const allowedOrigins = [
+  "http://localhost:5173",
+  "https://divya-sharma-29.github.io",
+  "https://citizen-frontend-9gwt.onrender.com",
+];
+
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      if (!origin || allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      return callback(new Error("Not allowed by CORS"));
+    },
+    credentials: true,
+  })
+);
 app.use(express.json({ limit: "1mb" }));
 
 // ======================================================
@@ -4656,6 +4673,13 @@ if (!process.env.JWT_SECRET) {
 
   process.exit(1);
 }
+
+console.log("========== CONFIG CHECK ==========");
+console.log("Environment:", process.env.NODE_ENV || "development");
+console.log("MONGO_URI loaded:", !!MONGO_URI);
+console.log("JWT_SECRET loaded:", !!process.env.JWT_SECRET);
+console.log("MongoDB URI format:", MONGO_URI.startsWith("mongodb"));
+console.log("==================================");
 
 mongoose
   .connect(MONGO_URI, {
