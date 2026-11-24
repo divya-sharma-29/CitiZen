@@ -81,15 +81,27 @@ function Register() {
       }
 
       if (role === "authority") {
+        // Authority accounts need admin approval, so no auto-login.
         setSuccess(
           "Registration submitted! Your authority access must be approved before you can use the Authority Dashboard."
         );
-      } else {
-        setSuccess(
-          "Account created successfully! Redirecting to login..."
-        );
+        setTimeout(() => {
+          navigate("/login");
+        }, 2000);
+        return;
       }
 
+      // Citizen: sign in automatically and go straight to the dashboard.
+      if (data.token && data.user) {
+        localStorage.setItem("token", data.token);
+        localStorage.setItem("user", JSON.stringify(data.user));
+        window.dispatchEvent(new Event("citizen-session-changed"));
+        navigate("/dashboard", { replace: true });
+        return;
+      }
+
+      // Fallback if the server didn't return a session.
+      setSuccess("Account created successfully! Redirecting to login...");
       setTimeout(() => {
         navigate("/login");
       }, 2000);

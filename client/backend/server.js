@@ -620,15 +620,32 @@ app.post("/api/auth/register", async (req, res) => {
       department: isAuthority ? department.trim() : null,
     });
 
+    // Citizens are signed in immediately after registering.
+    // Authorities stay logged out until an admin approves them.
+    const token = isAuthority
+      ? undefined
+      : jwt.sign(
+          {
+            id: user._id,
+            email: user.email,
+            role: user.role,
+            authVersion: user.authVersion || 0,
+          },
+          process.env.JWT_SECRET,
+          { expiresIn: "1d" }
+        );
+
     return res.status(201).json({
       message: isAuthority
         ? "Registration successful. Your authority account is pending admin approval."
         : "Citizen account registered successfully.",
+      token,
       user: {
         id: user._id,
         name: user.name,
         email: user.email,
         role: user.role,
+        department: user.department,
         authorityStatus: user.authorityStatus,
       },
     });
