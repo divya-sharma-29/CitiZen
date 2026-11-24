@@ -438,8 +438,6 @@ export default function AdminDashboard() {
   useEffect(() => {
     if (!removalTarget) return;
     const controller = new AbortController();
-    setRemovalImpactLoading(true);
-    setRemovalImpactError("");
 
     fetch(apiUrl(`/api/admin/users/${removalTarget._id}/impact`), {
       headers: { Authorization: `Bearer ${token}` },

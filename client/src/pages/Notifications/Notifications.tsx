@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Bell, Check, CheckCheck, Clock3 } from "lucide-react";
+import API_URL from "../../config/api";
 
 interface NotificationReport {
   _id: string;
@@ -16,8 +17,6 @@ interface Notification {
   createdAt: string;
   reportId?: NotificationReport | null;
 }
-
-const API_URL = "http://localhost:5000";
 
 async function fetchNotifications(
   token: string,
