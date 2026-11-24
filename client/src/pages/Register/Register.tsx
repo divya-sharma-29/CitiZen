@@ -92,15 +92,34 @@ function Register() {
       }
 
       // Citizen: sign in automatically and go straight to the dashboard.
-      if (data.token && data.user) {
-        localStorage.setItem("token", data.token);
-        localStorage.setItem("user", JSON.stringify(data.user));
+      let token: string | undefined = data.token;
+      let sessionUser = data.user;
+
+      // If the register response has no token (e.g. older backend still
+      // running), log in with the credentials the user just entered.
+      if (!token) {
+        const loginResponse = await fetch(apiUrl("/api/auth/login"), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: email.trim(), password }),
+        });
+        const loginData = await loginResponse.json().catch(() => null);
+
+        if (loginResponse.ok && loginData?.token && loginData?.user) {
+          token = loginData.token;
+          sessionUser = loginData.user;
+        }
+      }
+
+      if (token && sessionUser) {
+        localStorage.setItem("token", token);
+        localStorage.setItem("user", JSON.stringify(sessionUser));
         window.dispatchEvent(new Event("citizen-session-changed"));
         navigate("/dashboard", { replace: true });
         return;
       }
 
-      // Fallback if the server didn't return a session.
+      // Last resort: send them to the login page.
       setSuccess("Account created successfully! Redirecting to login...");
       setTimeout(() => {
         navigate("/login");
